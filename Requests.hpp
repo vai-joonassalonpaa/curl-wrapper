@@ -121,6 +121,7 @@ namespace LouiEriksson::Networking {
 			using Header_t = std::shared_ptr<curl_slist>;
 			
 			Handle_t m_Handle;
+			Header_t m_Header;
 			
 			static size_t WriteFunction(void* _data, size_t _stride, size_t _count, std::vector<char>* _userData) {
 		
@@ -150,8 +151,17 @@ namespace LouiEriksson::Networking {
 				return m_Handle;
 			}
 			
-			[[nodiscard]] static Header_t Header() {
-				return Header_t({}, [](curl_slist* _ptr) { if (_ptr != nullptr) { curl_slist_free_all(_ptr); }});
+			void SetHeader(const std::vector<std::string> &_headerValues) {
+				for (const auto &headerValue : _headerValues) {
+					const auto temp = curl_slist_append(m_Header.get(), headerValue.c_str());
+					if (!temp) {
+						throw std::runtime_error("Error while appending header to slist");
+					}
+					if (!m_Header) {
+						m_Header.reset(temp, [](curl_slist* _ptr) { if (_ptr != nullptr) { curl_slist_free_all(_ptr); }});
+					}
+				}
+				Set(CURLOPT_HTTPHEADER, m_Header.get());
 			}
 			
 			/**
